@@ -1,0 +1,268 @@
+
+services:
+  # === MULTI-MODEL PROVIDERS ===
+  
+  # Primary chat model (your existing)
+  llama3-chat:
+    provider:
+      type: model
+      options:
+        model: ai/llama3.2:1B-Q8_0
+    environment:
+      - MODEL_PURPOSE=chat
+      - MODEL_PRIORITY=primary
+
+  # Analysis model for complex tasks  
+  llama3-large:
+    provider:
+      type: model
+      options:
+        model: ai/llama3.2:3B-Q4_K_M
+    environment:
+      - MODEL_PURPOSE=analysis
+      - MODEL_PRIORITY=secondary
+
+  # Code-specialized model
+  gemma-code:
+    provider:
+      type: model
+      options:
+        model: ai/gemma3:2b-instruct-q4_0
+    environment:
+      - MODEL_PURPOSE=code
+      - MODEL_PRIORITY=specialized
+
+  # === MCP PROVIDERS ===
+  
+  # Web research capabilities
+  web-research-mcp:
+    provider:
+      type: mcp
+      options:
+        tools: brave_web_search,get_article,fetch_content,summarize_page
+        name: web-research
+
+  # Document processing
+  document-mcp:
+    provider:
+      type: mcp
+      options:
+        tools: read_file,write_file,search_documents,extract_text
+        name: document-processor
+
+  # Code analysis
+  code-mcp:
+    provider:
+      type: mcp
+      options:
+        tools: analyze_code,generate_code,run_tests,check_syntax
+        name: code-assistant
+
+  # === ENHANCED BACKEND ===
+  
+  aiwatch-backend-enhanced:
+    build: 
+      context: .
+      dockerfile: Dockerfile.enhanced
+    ports:
+      - "8080:8080"
+    environment:
+      # Multi-model configuration
+      - PRIMARY_MODEL_URL=${LLAMA3_CHAT_URL}
+      - ANALYSIS_MODEL_URL=${LLAMA3_LARGE_URL} 
+      - CODE_MODEL_URL=${GEMMA_CODE_URL}
+      
+      # MCP Gateway connections
+      - WEB_RESEARCH_MCP_URL=${WEB_RESEARCH_MCP_URL}
+      - DOCUMENT_MCP_URL=${DOCUMENT_MCP_URL}
+      - CODE_MCP_URL=${CODE_MCP_URL}
+      
+      # Enhanced features
+      - MULTI_MODEL_ENABLED=true
+      - MCP_TOOLS_ENABLED=true
+      - INTELLIGENT_ROUTING=true
+      
+      # Your existing config
+      - LOG_LEVEL=info
+      - LOG_PRETTY=true
+      - TRACING_ENABLED=true
+      - OTLP_ENDPOINT=http://jaeger:14268/api/traces
+    depends_on:
+      - llama3-chat
+      - llama3-large
+      - gemma-code
+      - web-research-mcp
+      - document-mcp
+      - code-mcp
+      - prometheus
+      - jaeger
+    networks:
+      - aiwatch-network
+
+  # === ENHANCED FRONTEND ===
+  
+  aiwatch-frontend-enhanced:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.enhanced
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_BACKEND_URL=http://aiwatch-backend-enhanced:8080
+      - REACT_APP_MULTI_MODEL_ENABLED=true
+      - REACT_APP_MCP_ENABLED=true
+    depends_on:
+      - aiwatch-backend-enhanced
+    networks:
+      - aiwatch-network
+
+  # === AGENT SERVICES ===
+  
+  # Research agent for autonomous tasks
+  research-agent:
+    image: collabnix/aiwatch-agent:latest
+    environment:
+      - AGENT_TYPE=research
+      - PRIMARY_MODEL_URL=${LLAMA3_LARGE_URL}
+      - MCP_TOOLS=web-research,document-processor
+      - OUTPUT_FORMAT=markdown
+      - BACKEND_URL=http://aiwatch-backend-enhanced:8080
+    depends_on:
+      - llama3-large
+      - web-research-mcp
+      - document-mcp
+      - aiwatch-backend-enhanced
+    networks:
+      - aiwatch-network
+
+  # Code analysis agent
+  code-agent:
+    image: collabnix/aiwatch-agent:latest
+    environment:
+      - AGENT_TYPE=code-analysis
+      - PRIMARY_MODEL_URL=${GEMMA_CODE_URL}
+      - MCP_TOOLS=code-assistant,document-processor
+      - OUTPUT_FORMAT=structured
+      - BACKEND_URL=http://aiwatch-backend-enhanced:8080
+    depends_on:
+      - gemma-code
+      - code-mcp
+      - document-mcp
+      - aiwatch-backend-enhanced
+    networks:
+      - aiwatch-network
+
+  # === MCP ORCHESTRATION ===
+  
+  mcp-gateway:
+    image: docker/mcp-gateway:latest
+    ports:
+      - "8811:8811"
+    environment:
+      - MCP_CONFIG_PATH=/config
+      - OBSERVABILITY_ENABLED=true
+      - METRICS_ENDPOINT=http://prometheus:9090
+      - TRACING_ENDPOINT=http://jaeger:14268
+    volumes:
+      - ./mcp-config:/config
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - web-research-mcp
+      - document-mcp
+      - code-mcp
+    networks:
+      - aiwatch-network
+
+  # === ENHANCED OBSERVABILITY ===
+  
+  # Enhanced Prometheus with multi-model metrics
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus/prometheus-enhanced.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/rules:/etc/prometheus/rules
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - aiwatch-network
+
+  # Enhanced Grafana with multi-model dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_FEATURE_TOGGLES_ENABLE=ngalert
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/datasources-enhanced:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards-enhanced:/etc/grafana/provisioning/dashboards
+      - ./grafana/dashboard-configs-enhanced:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - aiwatch-network
+
+  # Your existing Jaeger with agent tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=memory
+    networks:
+      - aiwatch-network
+
+  # === BACKWARDS COMPATIBILITY ===
+  # Keep your original services for fallback
+  
+  aiwatch-backend-original:
+    build: .
+    ports:
+      - "8081:8080"  # Different port to avoid conflicts
+    env_file:
+      - backend.env
+    depends_on:
+      - prometheus
+      - jaeger
+    networks:
+      - aiwatch-network
+    profiles: ["original"]  # Only start with --profile original
+
+  aiwatch-frontend-original:
+    build: ./frontend
+    ports:
+      - "3002:3000"  # Different port
+    depends_on:
+      - aiwatch-backend-original
+    networks:
+      - aiwatch-network
+    profiles: ["original"]
+
+volumes:
+  grafana-storage:
+
+networks:
+  aiwatch-network:
+    driver: bridge
+
+# Secrets management
+secrets:
+  brave_api_key:
+    file: ./secrets/brave_api_key.txt
+  openai_key:
+    file: ./secrets/openai_key.txt
+  github_token:
+    file: ./secrets/github_token.txt
