@@ -6,41 +6,70 @@ import { ModelMetadata } from './types';
 function App() {
   // Initialize darkMode from localStorage or system preference
   const [darkMode, setDarkMode] = useState(() => {
-    const savedDarkMode = localStorage.getItem('darkMode');
-    
-    // If we have a saved preference, use it
-    if (savedDarkMode !== null) {
-      return savedDarkMode === 'true';
+    try {
+      const savedDarkMode = localStorage.getItem('darkMode');
+      
+      // If we have a saved preference, use it
+      if (savedDarkMode !== null) {
+        return savedDarkMode === 'true';
+      }
+      
+      // Otherwise, check system preference
+      if (window.matchMedia) {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+      
+      // Fallback to light mode
+      return false;
+    } catch (error) {
+      console.warn('Error reading dark mode preference:', error);
+      return false;
     }
-    
-    // Otherwise, check system preference
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   
   const [modelInfo, setModelInfo] = useState<ModelMetadata | null>(null);
 
+  // Apply dark mode class immediately when component mounts
+  useEffect(() => {
+    try {
+      if (darkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch (error) {
+      console.warn('Error applying dark mode class:', error);
+    }
+  }, [darkMode]);
+
   // Listen for changes to system preference
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleChange = (e: MediaQueryListEvent) => {
-      // Only update if user hasn't explicitly set a preference
-      if (localStorage.getItem('darkMode') === null) {
-        setDarkMode(e.matches);
-      }
-    };
-    
-    // Some browsers use addEventListener, some use addListener
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    } else {
-      // @ts-ignore - For older browsers
-      mediaQuery.addListener(handleChange);
-      return () => {
-        // @ts-ignore - For older browsers
-        mediaQuery.removeListener(handleChange);
+    try {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      const handleChange = (e: MediaQueryListEvent) => {
+        // Only update if user hasn't explicitly set a preference
+        const savedPreference = localStorage.getItem('darkMode');
+        if (savedPreference === null) {
+          setDarkMode(e.matches);
+        }
       };
+      
+      // Check if addEventListener is available (modern browsers)
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+      } else if (mediaQuery.addListener) {
+        // Fallback for older browsers
+        // @ts-ignore - For older browsers
+        mediaQuery.addListener(handleChange);
+        return () => {
+          // @ts-ignore - For older browsers
+          mediaQuery.removeListener(handleChange);
+        };
+      }
+    } catch (error) {
+      console.warn('Error setting up system preference listener:', error);
     }
   }, []);
 
@@ -49,14 +78,20 @@ function App() {
     fetchModelInfo();
   }, []);
 
-  // Apply dark mode class when darkMode state changes
+  // Save dark mode preference and apply class when darkMode state changes
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('darkMode', 'true');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('darkMode', 'false');
+    try {
+      // Save preference to localStorage
+      localStorage.setItem('darkMode', darkMode.toString());
+      
+      // Apply or remove dark class
+      if (darkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch (error) {
+      console.warn('Error saving dark mode preference:', error);
     }
   }, [darkMode]);
 
