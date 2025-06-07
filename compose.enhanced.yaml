@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile.analytics
       target: token-analytics
     ports:
-      - "8080:8080"
+      - "8082:8080"
     depends_on:
       redis:
         condition: service_healthy
@@ -31,7 +31,7 @@ services:
       context: .
       dockerfile: Dockerfile.timeseries
     ports:
-      - "8081:8081"
+      - "8085:8081"
     depends_on:
       redis:
         condition: service_healthy
