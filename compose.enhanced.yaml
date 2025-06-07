@@ -1,13 +1,17 @@
 services:
   redis:
-    image: redis/redis-stack-server:latest
+    image: redis/redis-stack:latest
     ports:
       - "6379:6379"
       - "8001:8001"
     volumes:
       - redis_data:/data
-    environment:
-      - REDIS_ARGS=--loadmodule /opt/redis-stack/lib/redistimeseries.so
+    command: redis-server --loadmodule /opt/redis-stack/lib/redistimeseries.so
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   token-analytics:
     build:
@@ -17,9 +21,10 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     environment:
-      - REDIS_URL=redis://redis:6379
+      - REDIS_ADDR=redis:6379
 
   redis-timeseries-service:
     build:
@@ -28,9 +33,10 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     environment:
-      - REDIS_URL=redis://redis:6379
+      - REDIS_ADDR=redis:6379
 
 volumes:
   redis_data:
