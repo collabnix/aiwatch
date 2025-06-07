@@ -1,49 +1,21 @@
-# Build stage for token analytics service
-FROM golang:1.21-alpine AS token-analytics-builder
+FROM golang:1.23-alpine AS token-analytics
 
 WORKDIR /app
 
-# Install dependencies
-RUN apk add --no-cache git ca-certificates
-
 # Copy go mod files
 COPY go.mod go.sum ./
+
+# Download dependencies
 RUN go mod download
 
-# Copy source files
-COPY token_analytics_service.go token_capture.go ./
+# Copy source code
+COPY . .
 
 # Build the analytics service
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o token-analytics \
-    token_analytics_service.go
-
-# Runtime stage
-FROM alpine:3.18
-
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates wget curl
-
-WORKDIR /root/
-
-# Copy the binary from builder stage
-COPY --from=token-analytics-builder /app/token-analytics .
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S analytics && \
-    adduser -u 1001 -S analytics -G analytics
-
-# Change ownership
-RUN chown analytics:analytics token-analytics
-
-# Switch to non-root user
-USER analytics
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8081/health || exit 1
+RUN go build -o token-analytics ./cmd/analytics
 
 # Expose port
-EXPOSE 8081
+EXPOSE 8080
 
-# Run the binary
+# Run the application
 CMD ["./token-analytics"]
