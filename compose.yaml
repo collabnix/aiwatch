@@ -16,6 +16,11 @@ services:
       - app-network
     depends_on:
       - llm
+      - redis
+    environment:
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=0
 
   frontend:
     build:
@@ -28,34 +33,98 @@ services:
     networks:
       - app-network
 
+  # Redis for token metrics storage
+  redis:
+    image: redis:7.2-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:-} --appendonly yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - app-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  # Redis Exporter for Prometheus integration
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.56.0
+    ports:
+      - '9121:9121'
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    networks:
+      - app-network
+    depends_on:
+      - redis
+
+  # Token Analytics Service - Real-time Redis data processor
+  token-analytics:
+    build:
+      context: .
+      target: token-analytics
+      dockerfile: Dockerfile.analytics
+    ports:
+      - '8081:8081'  # Analytics API port
+    environment:
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=0
+      - ANALYTICS_PORT=8081
+    networks:
+      - app-network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8081/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   prometheus:
     image: prom/prometheus:v2.45.0
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/rules:/etc/prometheus/rules
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=30d'
     ports:
       - '9091:9090'
     networks:
       - app-network
+    depends_on:
+      - redis-exporter
 
   grafana:
     image: grafana/grafana:10.1.0
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
       - grafana-data:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_DOMAIN=localhost
+      # Redis datasource plugin
+      - GF_INSTALL_PLUGINS=redis-datasource
+      # Enable Redis datasource
+      - GF_FEATURE_TOGGLES_ENABLE=redisDataSource
     ports:
       - '3001:3000'
     depends_on:
       - prometheus
+      - redis
+      - token-analytics
     networks:
       - app-network
 
@@ -77,8 +146,23 @@ services:
       options:
         model: ${LLM_MODEL_NAME:-ai/llama3.2:1B-Q8_0}
 
+  # Redis Insight for Redis management and debugging
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    ports:
+      - '8001:8001'
+    environment:
+      - RIPORT=8001
+    networks:
+      - app-network
+    depends_on:
+      - redis
+    profiles:
+      - debug  # Only start with --profile debug
+
 volumes:
   grafana-data:
+  redis-data:
 
 networks:
   app-network:
