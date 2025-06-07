@@ -1,23 +1,66 @@
 services:
+  # Redis Database with Authentication
   redis:
     image: redis/redis-stack:latest
+    container_name: aiwatch-redis
     ports:
       - "6379:6379"
       - "8001:8001"
     volumes:
       - redis_data:/data
-    command: redis-server --protected-mode no --loadmodule /opt/redis-stack/lib/redistimeseries.so
+      - ./redis.conf:/etc/redis/redis.conf
+    command: ["redis-server", "/etc/redis/redis.conf", "--protected-mode", "no", "--loadmodule", "/opt/redis-stack/lib/redistimeseries.so"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
+    restart: unless-stopped
 
+  # Redis Exporter for Prometheus
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: aiwatch-redis-exporter
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aiwatch-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      # - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro  # Commented out to avoid mount error
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Token Analytics - FIXED REDIS CONNECTION
   token-analytics:
     build:
       context: .
       dockerfile: Dockerfile.analytics
       target: token-analytics
+    container_name: aiwatch-token-analytics
     ports:
       - "8082:8080"
     depends_on:
@@ -25,11 +68,16 @@ services:
         condition: service_healthy
     environment:
       - REDIS_ADDR=redis:6379
+    networks:
+      - app-network
+    restart: unless-stopped
 
+  # Redis TimeSeries Service - FIXED REDIS CONNECTION
   redis-timeseries-service:
     build:
       context: .
       dockerfile: Dockerfile.timeseries
+    container_name: aiwatch-redis-timeseries-service
     ports:
       - "8085:8081"
     depends_on:
@@ -37,6 +85,89 @@ services:
         condition: service_healthy
     environment:
       - REDIS_ADDR=redis:6379
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    image: aiwatch-backend:latest
+    container_name: aiwatch-backend
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis:6379
+      - REDIS_ADDR=redis:6379
+
+    env_file:
+      - backend.env
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    image: aiwatch-frontend:latest
+    container_name: aiwatch-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+      - REACT_APP_ANALYTICS_URL=http://localhost:8082
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aiwatch-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - redis
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: aiwatch-jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - app-network
+    restart: unless-stopped
 
 volumes:
   redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  app-network:
+    driver: bridge
