@@ -41,7 +41,7 @@ services:
     ports:
       - "9091:9090"
     volumes:
-      # - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro  # Commented out to avoid mount error
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -91,7 +91,9 @@ services:
 
   # Backend API
   backend:
-    image: aiwatch-backend:latest
+    build:
+      context: .
+      target: backend
     container_name: aiwatch-backend
     ports:
       - "8080:8080"
@@ -102,7 +104,6 @@ services:
     environment:
       - REDIS_URL=redis:6379
       - REDIS_ADDR=redis:6379
-
     env_file:
       - backend.env
     networks:
@@ -116,7 +117,8 @@ services:
 
   # Frontend
   frontend:
-    image: aiwatch-frontend:latest
+    build:
+      context: ./frontend
     container_name: aiwatch-frontend
     ports:
       - "3000:3000"
@@ -142,6 +144,7 @@ services:
       - GF_INSTALL_PLUGINS=redis-datasource
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
       - redis
