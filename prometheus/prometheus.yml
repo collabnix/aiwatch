@@ -1,24 +1,19 @@
 global:
   scrape_interval: 15s
-  evaluation_interval: 15s
-
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets:
-          # Add alertmanager if needed
-
-rule_files:
-  # Add rule files if needed
 
 scrape_configs:
-  - job_name: "prometheus"
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ['localhost:9090']
 
-  - job_name: "genai-app"
-    metrics_path: /metrics
+  - job_name: 'redis'
     static_configs:
-      - targets: ["host.docker.internal:9090"]
-        labels:
-          instance: "genai-app-backend"
+      - targets: ['redis-exporter:9121']
+
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['backend:9090']
+
+  - job_name: 'token-analytics'
+    static_configs:
+      - targets: ['token-analytics:8082']

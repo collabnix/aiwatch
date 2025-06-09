@@ -1,0 +1,170 @@
+groups:
+  - name: redis_alerts
+    rules:
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis instance is down"
+          description: "Redis instance {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: RedisHighMemoryUsage
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis instance {{ $labels.instance }} memory usage is above 90% (current: {{ $value }}%)."
+
+      - alert: RedisMemoryFragmentationHigh
+        expr: redis_memory_fragmentation_ratio > 1.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory fragmentation is high"
+          description: "Redis instance {{ $labels.instance }} has high memory fragmentation ratio: {{ $value }}."
+
+      - alert: RedisSlowLogGrowing
+        expr: increase(redis_slowlog_length[5m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis slow log is growing"
+          description: "Redis instance {{ $labels.instance }} slow log increased by {{ $value }} entries in 5 minutes."
+
+      - alert: RedisHighConnectionCount
+        expr: redis_connected_clients > 800
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis has high number of connections"
+          description: "Redis instance {{ $labels.instance }} has {{ $value }} connections (threshold: 800)."
+
+  - name: token_analytics_alerts
+    rules:
+      - alert: TokenAnalyticsServiceDown
+        expr: up{job="token-analytics"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Token Analytics Service is down"
+          description: "Token Analytics Service has been down for more than 1 minute."
+
+      - alert: HighTokenProcessingRate
+        expr: rate(genai_app_chat_tokens_total[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High token processing rate detected"
+          description: "Token processing rate is {{ $value }} tokens/sec, which is above normal threshold."
+
+      - alert: LowActiveUsers
+        expr: token_analytics_active_users{window="5m"} < 1
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low user activity detected"
+          description: "Only {{ $value }} active users in the last 5 minutes."
+
+      - alert: ModelResponseTimeHigh
+        expr: histogram_quantile(0.95, rate(genai_app_model_latency_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High model response time"
+          description: "95th percentile model response time is {{ $value }}s, which exceeds 30s threshold."
+
+      - alert: ErrorRateHigh
+        expr: rate(genai_app_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors/sec over the last 5 minutes."
+
+      - alert: FirstTokenLatencyHigh
+        expr: histogram_quantile(0.95, rate(genai_app_first_token_latency_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High first token latency"
+          description: "95th percentile first token latency is {{ $value }}s, exceeding 5s threshold."
+
+  - name: system_alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage on {{ $labels.instance }} is {{ $value }}%, exceeding 85% threshold."
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage on {{ $labels.instance }} is {{ $value }}%, exceeding 90% threshold."
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage on {{ $labels.instance }} mountpoint {{ $labels.mountpoint }} is {{ $value }}%."
+
+  - name: llama_cpp_alerts
+    rules:
+      - alert: LlamaCppContextSizeReachingLimit
+        expr: genai_app_llamacpp_context_size > 3500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Llama.cpp context size approaching limit"
+          description: "Context size for model {{ $labels.model }} is {{ $value }} tokens, approaching the limit."
+
+      - alert: LlamaCppTokensPerSecondLow
+        expr: genai_app_llamacpp_tokens_per_second < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low llama.cpp token generation speed"
+          description: "Token generation speed for model {{ $labels.model }} is {{ $value }} tokens/sec, which is below optimal."
+
+      - alert: LlamaCppHighMemoryPerToken
+        expr: genai_app_llamacpp_memory_per_token_bytes > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage per token"
+          description: "Memory usage per token for model {{ $labels.model }} is {{ $value }} bytes, indicating potential inefficiency."
+
+      - alert: LlamaCppThreadUtilizationLow
+        expr: genai_app_llamacpp_threads_used < 2
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low thread utilization"
+          description: "Model {{ $labels.model }} is using only {{ $value }} threads, consider optimizing thread count."

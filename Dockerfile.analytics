@@ -1,0 +1,21 @@
+FROM golang:1.23-alpine AS token-analytics
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the analytics service
+RUN go build -o token-analytics ./cmd/analytics
+
+# Expose port
+EXPOSE 8080
+
+# Run the application
+CMD ["./token-analytics"]

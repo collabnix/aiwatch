@@ -1,0 +1,31 @@
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the timeseries service
+RUN go build -o timeseries-service ./cmd/timeseries
+
+# Final stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /root/
+
+# Copy binary from builder stage
+COPY --from=builder /app/timeseries-service .
+
+# Expose port
+EXPOSE 8081
+
+# Run the application
+CMD ["./timeseries-service"]
