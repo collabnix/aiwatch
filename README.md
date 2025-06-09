@@ -2,24 +2,22 @@
 
 <img width="932" alt="image" src="https://github.com/user-attachments/assets/869dc88c-fb9a-4f25-ba7a-acec2d2c8984" />
 
-
-
-A modern, full-stack chat application demonstrating how to integrate React frontend with a Go backend and run local Large Language Models (LLMs) using Docker's Model Runner.
-This repo also integrates the GenAI app with the Observability stack that includes Prometheus, Grafana and Jaeger.
+A modern, full-stack chat application demonstrating how to integrate React frontend with a Go backend and run local Large Language Models (LLMs) using Docker's Model Runner. This project features a **comprehensive Redis-powered observability stack** with real-time monitoring, analytics, and distributed tracing.
 
 ## Overview
 
 <img width="679" alt="image" src="https://github.com/user-attachments/assets/9b3931c2-aab3-421e-a3ca-990117ee545b" />
 
-
-This project showcases a complete Generative AI interface that includes:
+This project showcases a complete Generative AI interface with enterprise-grade observability that includes:
 - React/TypeScript frontend with a responsive chat UI
-- Go backend server for API handling
+- Go backend server for API handling  
 - Integration with Docker's Model Runner to run Llama 3.2 locally
-- Comprehensive observability with metrics, logging, and tracing
-- **NEW: llama.cpp metrics integration directly in the UI**
+- **Redis Stack** with TimeSeries for data persistence and analytics
+- **Comprehensive observability** with metrics, logging, and tracing
+- **NEW: Redis-powered analytics** with real-time performance monitoring
+- **Enhanced Docker Compose** setup with full observability stack
 
-## Features
+## 🔧 Features
 
 - 💬 Interactive chat interface with message history
 - 🔄 Real-time streaming responses (tokens appear as they're generated)
@@ -28,50 +26,51 @@ This project showcases a complete Generative AI interface that includes:
 - 🏠 Run AI models locally without cloud API dependencies
 - 🔒 Cross-origin resource sharing (CORS) enabled
 - 🧪 Integration testing using Testcontainers
-- 📊 Metrics and performance monitoring
+- 📊 **Redis-powered metrics** and performance monitoring
 - 📝 Structured logging with zerolog
-- 🔍 Distributed tracing with OpenTelemetry
-- 📈 Grafana dashboards for visualization
+- 🔍 Distributed tracing with OpenTelemetry & Jaeger
+- 📈 **Grafana dashboards** for visualization
 - 🚀 Advanced llama.cpp performance metrics
+- **🆕 Redis Stack** with TimeSeries, Search, and JSON support
+- **🆕 Redis Exporter** for Prometheus metrics integration
+- **🆕 Token Analytics Service** for usage tracking
+- **🆕 Production-ready** health checks and service dependencies
 
-<img width="1126" alt="image" src="https://github.com/user-attachments/assets/bccb9f93-1f6e-4397-a3ce-8a15370490d9" />
+<img width="1126" alt="image" src="https://github.com/user-attachments/assets/bccb9f93-1f6e-4397-a3ce-8a153704909d" />
 
+## 🏗️ Enhanced Architecture
 
-## Architecture
-
-The application consists of these main components:
+The application now consists of a comprehensive observability stack:
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Frontend  │ >>> │   Backend   │ >>> │ Model Runner│
-│  (React/TS) │     │    (Go)     │     │ (Llama 3.2) │
-└─────────────┘     └─────────────┘     └─────────────┘
-      :3000              :8080               :12434
-                          │  │
-┌─────────────┐     ┌─────┘  └─────┐     ┌─────────────┐
-│   Grafana   │ <<< │ Prometheus  │     │   Jaeger    │
-│ Dashboards  │     │  Metrics    │     │   Tracing   │
-└─────────────┘     └─────────────┘     └─────────────┘
-      :3001              :9091              :16686
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │ >>> │   Backend       │ >>> │  Model Runner   │
+│  (React/TS)     │     │    (Go)         │     │ (Llama 3.2)     │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+      :3000                   :8080                   :12434
+                              │  │
+┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
+│    Grafana      │ <<< │  Prometheus  │    │     Jaeger      │
+│  Dashboards     │     │   Metrics    │    │    Tracing      │
+└─────────────────┘     └──────────────┘    └─────────────────┘
+      :3001                   :9091                :16686
+
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Redis Stack   │    │ Redis Exporter  │    │ Token Analytics │
+│ DB + Insight    │    │ (Prometheus)    │    │    Service      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+   :6379, :8001              :9121                   :8082
+
+┌─────────────────┐
+│ Redis TimeSeries│
+│    Service      │
+└─────────────────┘
+       :8085
 ```
 
-## Connection Methods
+## 🚀 Quick Start
 
-There are two ways to connect to Model Runner:
-
-### 1. Using Internal DNS (Default)
-
-This method uses Docker's internal DNS resolution to connect to the Model Runner:
-- Connection URL: `http://model-runner.docker.internal/engines/llama.cpp/v1/`
-- Configuration is set in `backend.env`
-
-### 2. Using TCP
-
-This method uses host-side TCP support:
-- Connection URL: `host.docker.internal:12434`
-- Requires updates to the environment configuration
-
-## Prerequisites
+### Prerequisites
 
 - Docker and Docker Compose
 - Git
@@ -84,30 +83,72 @@ Before starting, pull the required model:
 docker model pull ai/llama3.2:1B-Q8_0
 ```
 
-## Quick Start
+### 🎯 One-Command Deployment
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/ajeetraina/genai-model-runner-metrics.git
-   cd genai-model-runner-metrics
-   ```
+**Start the complete AIWatch observability stack:**
 
-2. Start the application using Docker Compose:
-   ```bash
-   docker compose up -d --build
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/collabnix/aiwatch.git
+cd aiwatch
 
-3. Access the frontend at [http://localhost:3000](http://localhost:3000)
+# Start the complete stack (builds and runs all services)
+docker-compose -f compose.enhanced.yaml up -d --build
+```
 
-4. Access observability dashboards:
-   - Grafana: [http://localhost:3001](http://localhost:3001) (admin/admin)
-  
-Ensure that you provide `http://prometheus:9090` instead of `localhost:9090` to see the metrics on the Grafana dashboard.
+### 🌐 Access Points
 
-   - Jaeger UI: [http://localhost:16686](http://localhost:16686)
-   - Prometheus: [http://localhost:9091](http://localhost:9091)
+After deployment, access these services:
 
-## Development Setup
+| Service | URL | Credentials | Purpose |
+|---------|-----|-------------|---------|
+| **AIWatch Frontend** | http://localhost:3000 | - | Main chat interface |
+| **Grafana** | http://localhost:3001 | admin/admin | Monitoring dashboards |
+| **Redis Insight** | http://localhost:8001 | - | Redis database GUI |
+| **Prometheus** | http://localhost:9091 | - | Metrics collection |
+| **Jaeger** | http://localhost:16686 | - | Distributed tracing |
+| **Token Analytics** | http://localhost:8082 | - | Usage analytics API |
+| **TimeSeries API** | http://localhost:8085 | - | Redis TimeSeries service |
+
+### 📊 Redis Observability Features
+
+#### **Redis Stack Components**
+
+1. **Redis Database** (Port 6379)
+   - Primary data store for chat history and session management
+   - Redis TimeSeries for metrics storage
+   - Redis JSON for complex data structures
+   - Redis Search for full-text capabilities
+
+2. **Redis Insight** (Port 8001) 
+   - Web-based Redis GUI for database inspection
+   - Real-time monitoring of Redis performance
+   - Key-value browser and query interface
+
+3. **Redis Exporter** (Port 9121)
+   - Exports Redis metrics to Prometheus
+   - Monitors memory usage, command statistics, connection counts
+   - Integration with alerting systems
+
+4. **Token Analytics Service** (Port 8082)
+   - Tracks token usage patterns and costs
+   - API endpoint for analytics queries
+   - Integration with frontend metrics display
+
+5. **Redis TimeSeries Service** (Port 8085)
+   - Dedicated API for time-series data operations
+   - Historical performance data storage
+   - Real-time metrics aggregation
+
+#### **Monitoring & Analytics**
+
+- **Real-time Redis Metrics**: Memory usage, commands/sec, connections
+- **Token Usage Analytics**: Input/output tokens, cost tracking, usage patterns  
+- **Performance Monitoring**: Response times, throughput, error rates
+- **Historical Data**: Time-series storage of all metrics for trend analysis
+- **Grafana Integration**: Pre-configured dashboards for Redis monitoring
+
+## 🛠️ Development Setup
 
 ### Frontend
 
@@ -134,44 +175,50 @@ Make sure to set the required environment variables from `backend.env`:
 - `BASE_URL`: URL for the model runner
 - `MODEL`: Model identifier to use
 - `API_KEY`: API key for authentication (defaults to "ollama")
+- `REDIS_ADDR`: Redis connection address (redis:6379)
 - `LOG_LEVEL`: Logging level (debug, info, warn, error)
 - `LOG_PRETTY`: Whether to output pretty-printed logs
 - `TRACING_ENABLED`: Enable OpenTelemetry tracing
 - `OTLP_ENDPOINT`: OpenTelemetry collector endpoint
 
-## How It Works
+## 🔄 How It Works
 
 1. The frontend sends chat messages to the backend API
 2. The backend formats the messages and sends them to the Model Runner
-3. The LLM processes the input and generates a response
-4. The backend streams the tokens back to the frontend as they're generated
-5. The frontend displays the incoming tokens in real-time
-6. Observability components collect metrics, logs, and traces throughout the process
+3. Chat history and session data are stored in Redis
+4. The LLM processes the input and generates a response
+5. The backend streams the tokens back to the frontend as they're generated
+6. **Token analytics** are collected and stored in Redis TimeSeries
+7. **Redis metrics** are exported to Prometheus for monitoring
+8. Observability components collect metrics, logs, and traces throughout the process
+9. **Grafana dashboards** provide real-time visualization of system performance
 
-## Project Structure
+## 📁 Project Structure
 
 ```
-├── compose.yaml           # Docker Compose configuration
-├── backend.env            # Backend environment variables
-├── main.go                # Go backend server
-├── frontend/              # React frontend application
-│   ├── src/               # Source code
-│   │   ├── components/    # React components
-│   │   ├── App.tsx        # Main application component
+├── compose.enhanced.yaml        # Complete observability stack
+├── backend.env                  # Backend environment variables
+├── main.go                     # Go backend server
+├── frontend/                   # React frontend application
+│   ├── src/                    # Source code
+│   │   ├── components/         # React components
+│   │   ├── App.tsx            # Main application component
 │   │   └── ...
-├── pkg/                   # Go packages
-│   ├── logger/            # Structured logging
-│   ├── metrics/           # Prometheus metrics
-│   ├── middleware/        # HTTP middleware
-│   ├── tracing/           # OpenTelemetry tracing
-│   └── health/            # Health check endpoints
-├── prometheus/            # Prometheus configuration
-├── grafana/               # Grafana dashboards and configuration
-├── observability/         # Observability documentation
+├── pkg/                       # Go packages
+│   ├── logger/                # Structured logging
+│   ├── metrics/               # Prometheus metrics
+│   ├── middleware/            # HTTP middleware
+│   ├── tracing/               # OpenTelemetry tracing
+│   └── health/                # Health check endpoints
+├── prometheus/                # Prometheus configuration
+├── grafana/                   # Grafana dashboards and configuration
+├── redis/                     # Redis configuration
+│   └── redis.conf            # Redis server configuration
+├── observability/             # Observability documentation
 └── ...
 ```
 
-## llama.cpp Metrics Features
+## 📈 llama.cpp Metrics Features
 
 The application includes detailed llama.cpp metrics displayed directly in the UI:
 
@@ -184,7 +231,7 @@ The application includes detailed llama.cpp metrics displayed directly in the UI
 
 These metrics help in understanding the performance characteristics of llama.cpp models and can be used to optimize configurations.
 
-## Observability Features
+## 🔍 Observability Features
 
 The project includes comprehensive observability features:
 
@@ -194,6 +241,8 @@ The project includes comprehensive observability features:
 - Token usage (input and output counts)
 - Request rates and error rates
 - Active request monitoring
+- **Redis performance metrics** (memory, commands, connections)
+- **Token analytics** with cost tracking
 - llama.cpp specific performance metrics
 
 ### Logging
@@ -211,32 +260,26 @@ The project includes comprehensive observability features:
 
 For more information, see [Observability Documentation](./observability/README.md).
 
-## llama.cpp Metrics Integration
+## 🎛️ Configuration Options
 
-The application has been enhanced with specific metrics for llama.cpp models:
+### Redis Configuration
 
-1. **Backend Integration**: The Go backend collects and exposes llama.cpp-specific metrics:
-   - Context window size tracking
-   - Memory per token measurement
-   - Token generation speed calculations
-   - Thread utilization monitoring
-   - Prompt evaluation timing
-   - Batch size tracking
+The Redis setup includes:
+- **Persistence**: RDB and AOF enabled for data durability
+- **Memory Optimization**: Configured for optimal performance
+- **Security**: Protected mode disabled for development (configure for production)
+- **TimeSeries**: Enabled for metrics storage
+- **Networking**: Bridge network for service communication
 
-2. **Frontend Dashboard**: A dedicated metrics panel in the UI shows:
-   - Real-time token generation speed
-   - Memory efficiency
-   - Thread utilization with recommendations
-   - Context window size visualization
-   - Expandable detailed metrics view
-   - Integration with model info panel
+### Service Dependencies
 
-3. **Prometheus Integration**: All llama.cpp metrics are exposed to Prometheus for long-term storage and analysis:
-   - Custom histograms for timing metrics
-   - Gauges for resource utilization
-   - Counters for token throughput
+All services include:
+- **Health Checks**: Automated service health monitoring
+- **Restart Policies**: Automatic restart on failure
+- **Resource Limits**: Memory and CPU constraints
+- **Logging**: Centralized log collection
 
-## Customization
+## ⚙️ Customization
 
 You can customize the application by:
 1. Changing the model in `backend.env` to use a different LLM
@@ -244,8 +287,11 @@ You can customize the application by:
 3. Extending the backend API with additional functionality
 4. Customizing the Grafana dashboards for different metrics
 5. Adjusting llama.cpp parameters for performance optimization
+6. **Configuring Redis** for different persistence and performance requirements
+7. **Adding custom analytics** using the Token Analytics Service API
+8. **Creating custom dashboards** in Grafana for specific monitoring needs
 
-## Testing
+## 🧪 Testing
 
 The project includes integration tests using Testcontainers:
 
@@ -254,19 +300,66 @@ cd tests
 go test -v
 ```
 
-## Troubleshooting
+## 🚨 Troubleshooting
+
+### Common Issues
 
 - **Model not loading**: Ensure you've pulled the model with `docker model pull`
 - **Connection errors**: Verify Docker network settings and that Model Runner is running
 - **Streaming issues**: Check CORS settings in the backend code
 - **Metrics not showing**: Verify that Prometheus can reach the backend metrics endpoint
+- **Redis connection failed**: Check Redis container status and network connectivity
 - **llama.cpp metrics missing**: Confirm that your model is indeed a llama.cpp model
+- **Grafana dashboards empty**: Ensure Prometheus is collecting metrics and data source is configured correctly
 
-## License
+### Redis-Specific Troubleshooting
+
+- **Redis Insight not accessible**: Check if port 8001 is available and Redis container is running
+- **Token analytics not working**: Verify Redis TimeSeries module is loaded and service dependencies are met
+- **Performance degradation**: Monitor Redis memory usage and consider adjusting configuration
+- **Data not persisting**: Check Redis volume mounts and persistence configuration
+
+### Health Checks
+
+Monitor service health using:
+```bash
+# Check all container status
+docker-compose -f compose.enhanced.yaml ps
+
+# View specific service logs
+docker-compose -f compose.enhanced.yaml logs redis
+docker-compose -f compose.enhanced.yaml logs grafana
+docker-compose -f compose.enhanced.yaml logs token-analytics
+```
+
+## 📊 Performance Optimization
+
+### Redis Optimization
+- **Memory Management**: Configure `maxmemory` and eviction policies
+- **Persistence**: Balance between RDB and AOF based on use case
+- **Networking**: Use Redis clustering for high availability
+- **Monitoring**: Set up alerts for memory usage and connection limits
+
+### Model Performance
+- **Thread Configuration**: Optimize thread count based on CPU cores
+- **Memory Settings**: Configure context window based on available RAM
+- **Batch Processing**: Adjust batch size for optimal throughput
+
+## 🔄 Migration from Basic Setup
+
+If upgrading from a previous version:
+
+1. **Backup existing data** (if any)
+2. **Stop current services**: `docker-compose down`
+3. **Use new compose file**: `docker-compose -f compose.enhanced.yaml up -d --build`
+4. **Verify all services**: Check health endpoints and Grafana dashboards
+5. **Import existing data** into Redis if needed
+
+## 📜 License
 
 MIT
 
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -275,3 +368,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## 🙏 Acknowledgments
+
+- Docker Model Runner team for local LLM capabilities
+- Redis Stack for comprehensive data management
+- Grafana and Prometheus communities for observability tools
+- OpenTelemetry project for distributed tracing standards
