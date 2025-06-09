@@ -89,11 +89,14 @@ services:
       - app-network
     restart: unless-stopped
 
-  # Backend API
+  # Backend API - FIXED BUILD CONFIGURATION
   backend:
     build:
       context: .
+      dockerfile: Dockerfile
       target: backend
+      args:
+        - EXCLUDE_SERVICES=true
     container_name: aiwatch-backend
     ports:
       - "8080:8080"
