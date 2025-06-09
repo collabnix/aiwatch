@@ -35,7 +35,9 @@ This project showcases a complete Generative AI interface with enterprise-grade 
 - **🆕 Redis Exporter** for Prometheus metrics integration
 - **🆕 Token Analytics Service** for usage tracking
 - **🆕 Production-ready** health checks and service dependencies
+- **🆕 Auto-configured Grafana** with Prometheus and Redis datasources
 
+<img width="1126" alt="image" src="https://github.com/user-attachments/assets/bccb9f93-1f6e-4397-a3ce-8a153704909d" />
 
 ## 🏗️ Enhanced Architecture
 
@@ -92,7 +94,7 @@ git clone https://github.com/collabnix/aiwatch.git
 cd aiwatch
 
 # Start the complete stack (builds and runs all services)
-docker-compose -f compose.enhanced.yaml up -d --build
+docker-compose up -d --build
 ```
 
 ### 🌐 Access Points
@@ -108,6 +110,30 @@ After deployment, access these services:
 | **Jaeger** | http://localhost:16686 | - | Distributed tracing |
 | **Token Analytics** | http://localhost:8082 | - | Usage analytics API |
 | **TimeSeries API** | http://localhost:8085 | - | Redis TimeSeries service |
+
+### ✅ Verification Steps
+
+After deployment, verify the observability stack is working:
+
+1. **Check Grafana Connection**:
+   - Visit http://localhost:3001
+   - Login with admin/admin
+   - Go to **Configuration > Data Sources**
+   - Verify **Prometheus** datasource shows "✅ Data source is working"
+   - Verify **Redis** datasource is configured
+
+2. **Check Prometheus Targets**:
+   - Visit http://localhost:9091/targets
+   - All targets should show **State: UP**:
+     - `prometheus:9090` (Prometheus itself)
+     - `redis-exporter:9121` (Redis metrics)
+     - `backend:9090` (Backend metrics)
+     - `token-analytics:8082` (Analytics metrics)
+
+3. **View Pre-built Dashboard**:
+   - In Grafana, go to **Dashboards**
+   - Open **"AIWatch Redis Monitoring"**
+   - You should see Redis metrics: Memory Usage, Connected Clients, Commands/sec
 
 ### 📊 Redis Observability Features
 
@@ -146,6 +172,7 @@ After deployment, access these services:
 - **Performance Monitoring**: Response times, throughput, error rates
 - **Historical Data**: Time-series storage of all metrics for trend analysis
 - **Grafana Integration**: Pre-configured dashboards for Redis monitoring
+- **Auto-configured Datasources**: Prometheus and Redis datasources automatically set up
 
 ## 🛠️ Development Setup
 
@@ -195,7 +222,7 @@ Make sure to set the required environment variables from `backend.env`:
 ## 📁 Project Structure
 
 ```
-├── compose.enhanced.yaml        # Complete observability stack
+├── compose.yaml                 # Complete observability stack deployment
 ├── backend.env                  # Backend environment variables
 ├── main.go                     # Go backend server
 ├── frontend/                   # React frontend application
@@ -210,7 +237,12 @@ Make sure to set the required environment variables from `backend.env`:
 │   ├── tracing/               # OpenTelemetry tracing
 │   └── health/                # Health check endpoints
 ├── prometheus/                # Prometheus configuration
-├── grafana/                   # Grafana dashboards and configuration
+│   └── prometheus.yml         # Scraping configuration
+├── grafana/                   # Grafana configuration
+│   ├── provisioning/          # Auto-configuration
+│   │   ├── datasources/       # Prometheus & Redis datasources
+│   │   └── dashboards/        # Dashboard provisioning
+│   └── dashboards/            # Pre-built dashboard JSON files
 ├── redis/                     # Redis configuration
 │   └── redis.conf            # Redis server configuration
 ├── observability/             # Observability documentation
@@ -278,6 +310,12 @@ All services include:
 - **Resource Limits**: Memory and CPU constraints
 - **Logging**: Centralized log collection
 
+### Auto-Configuration
+
+- **Grafana Datasources**: Automatically configured Prometheus and Redis connections
+- **Dashboard Provisioning**: Pre-built Redis monitoring dashboard
+- **Prometheus Targets**: All services automatically discovered and monitored
+
 ## ⚙️ Customization
 
 You can customize the application by:
@@ -289,6 +327,7 @@ You can customize the application by:
 6. **Configuring Redis** for different persistence and performance requirements
 7. **Adding custom analytics** using the Token Analytics Service API
 8. **Creating custom dashboards** in Grafana for specific monitoring needs
+9. **Adding new datasources** in `grafana/provisioning/datasources/`
 
 ## 🧪 Testing
 
@@ -318,17 +357,47 @@ go test -v
 - **Performance degradation**: Monitor Redis memory usage and consider adjusting configuration
 - **Data not persisting**: Check Redis volume mounts and persistence configuration
 
+### Grafana Connectivity Issues
+
+If Grafana shows "No data" like in your screenshot:
+
+1. **Check Datasource Configuration**:
+   ```bash
+   # Verify Prometheus is accessible from Grafana container
+   docker exec aiwatch-grafana wget -qO- http://prometheus:9090/api/v1/query?query=up
+   ```
+
+2. **Check Prometheus Targets**:
+   ```bash
+   # View Prometheus targets status
+   curl http://localhost:9091/api/v1/targets
+   ```
+
+3. **Restart Stack** (if needed):
+   ```bash
+   docker-compose down
+   docker-compose up -d --build
+   ```
+
+The issue you encountered was due to **Docker networking** - services within the Docker network must communicate using **service names** (like `prometheus:9090`) rather than `localhost:9090`. We've fixed this by:
+
+- ✅ Mounting the `prometheus.yml` configuration file properly
+- ✅ Using correct service names in Prometheus targets
+- ✅ Auto-configuring Grafana datasources with proper internal URLs
+- ✅ Adding pre-built Redis monitoring dashboard
+
 ### Health Checks
 
 Monitor service health using:
 ```bash
 # Check all container status
-docker-compose -f compose.enhanced.yaml ps
+docker-compose ps
 
 # View specific service logs
-docker-compose -f compose.enhanced.yaml logs redis
-docker-compose -f compose.enhanced.yaml logs grafana
-docker-compose -f compose.enhanced.yaml logs token-analytics
+docker-compose logs redis
+docker-compose logs grafana
+docker-compose logs prometheus
+docker-compose logs token-analytics
 ```
 
 ## 📊 Performance Optimization
@@ -350,7 +419,7 @@ If upgrading from a previous version:
 
 1. **Backup existing data** (if any)
 2. **Stop current services**: `docker-compose down`
-3. **Use new compose file**: `docker-compose -f compose.enhanced.yaml up -d --build`
+3. **Use new compose file**: `docker-compose up -d --build`
 4. **Verify all services**: Check health endpoints and Grafana dashboards
 5. **Import existing data** into Redis if needed
 
