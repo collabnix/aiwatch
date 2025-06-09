@@ -36,7 +36,6 @@ This project showcases a complete Generative AI interface with enterprise-grade 
 - **🆕 Token Analytics Service** for usage tracking
 - **🆕 Production-ready** health checks and service dependencies
 
-<img width="1126" alt="image" src="https://github.com/user-attachments/assets/bccb9f93-1f6e-4397-a3ce-8a153704909d" />
 
 ## 🏗️ Enhanced Architecture
 
