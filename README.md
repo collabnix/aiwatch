@@ -37,7 +37,7 @@ This project showcases a complete Generative AI interface with enterprise-grade 
 - **🆕 Production-ready** health checks and service dependencies
 - **🆕 Auto-configured Grafana** with Prometheus and Redis datasources
 
-<img width="1126" alt="image" src="https://github.com/user-attachments/assets/bccb9f93-1f6e-4397-a3ce-8a153704909d" />
+
 
 ## 🏗️ Enhanced Architecture
 
